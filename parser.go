@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"regexp"
+	"strings"
 )
 
 type state struct {
@@ -22,6 +23,8 @@ func init() {
 		"public_ip",    // AWS
 		"private_ip",   // AWS
 		"ipaddress",    // CS
+		"floating_ip",  // OS, best choice (more likely to be reachable)
+		"access_ip_v4", // OS, second choice (less likely to be reachable)
 	}
 }
 
@@ -94,4 +97,32 @@ func (s resourceState) Attributes() map[string]string {
 type instanceState struct {
 	ID         string            `json:"id"`
 	Attributes map[string]string `json:"attributes,omitempty"`
+}
+
+// NovaMetadata returns a map[string]string of a resource's metadata attributes.
+// Skips the count ("metadata.#)
+func (s resourceState) NovaMetadata() map[string]string {
+	metadata := make(map[string]string)
+	meta_matcher := regexp.MustCompile(`^metadata.[^#]`)
+
+	for attrname, attr := range s.Attributes() {
+		if meta_matcher.MatchString(attrname) {
+			metaname := strings.TrimPrefix(attrname, "metadata.")
+			metadata[metaname] = attr
+		}
+	}
+
+	return metadata
+}
+
+// AnsibleHostGroups looks for a piece of metadata named
+// "ansible_host_groups" and returns the slice created by splitting its
+// contents on a comma (will swallow whitespace around the comma).
+func (s resourceState) AnsibleHostGroups() []string {
+	for metaname, attr := range s.NovaMetadata() {
+		if metaname == "ansible_host_groups" {
+			return regexp.MustCompile("\\s*,\\s*").Split(attr, -1)
+		}
+	}
+	return make([]string, 0)
 }

@@ -13,6 +13,10 @@ func cmdList(stdout io.Writer, stderr io.Writer, s *state) int {
 	// individually where necessary.
 	for name, res := range s.resources() {
 		groups[name] = []string{res.Address()}
+
+		for _, host_group := range res.AnsibleHostGroups() {
+			groups[host_group] = append(groups[host_group], res.Address())
+		}
 	}
 
 	return output(stdout, stderr, groups)
