@@ -25,7 +25,11 @@ func cmdList(stdout io.Writer, stderr io.Writer, s *state) int {
 func cmdHost(stdout io.Writer, stderr io.Writer, s *state, hostname string) int {
 	for name, res := range s.resources() {
 		if hostname == name {
-			return output(stdout, stderr, res.Attributes())
+			attrs := res.Attributes()
+			for name, value := range res.AnsibleHostVars() {
+				attrs[name] = value
+			}
+			return output(stdout, stderr, attrs)
 		}
 	}
 

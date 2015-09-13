@@ -126,3 +126,26 @@ func (s resourceState) AnsibleHostGroups() []string {
 	}
 	return make([]string, 0)
 }
+
+func (s resourceState) AnsibleHostVars() map[string]string {
+	vars := make(map[string]string)
+
+	m := s.NovaMetadata()
+	ahv := m["ansible_host_vars"]
+
+	if len(ahv) > 0 {
+		semicolon_sep := regexp.MustCompile("\\s*;\\s*")
+		arrow_sep := regexp.MustCompile("\\s*->\\s*")
+
+		name_val_pairs := semicolon_sep.Split(ahv, -1)
+		for _, nvp := range name_val_pairs { // each name value pair (nvp)
+			parts := arrow_sep.Split(nvp, -1)
+			if len(parts) != 2 {
+				panic("Multiple arrows seen in an assignment statement")
+			}
+			vars[parts[0]] = parts[1]
+		}
+	}
+
+	return vars
+}
