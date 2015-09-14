@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"regexp"
@@ -134,18 +135,29 @@ func (s resourceState) AnsibleHostVars() map[string]string {
 	ahv := m["ansible_host_vars"]
 
 	if len(ahv) > 0 {
-		semicolon_sep := regexp.MustCompile("\\s*;\\s*")
-		arrow_sep := regexp.MustCompile("\\s*->\\s*")
-
-		name_val_pairs := semicolon_sep.Split(ahv, -1)
+		name_val_pairs := splitOnSemi(ahv)
 		for _, nvp := range name_val_pairs { // each name value pair (nvp)
-			parts := arrow_sep.Split(nvp, -1)
-			if len(parts) != 2 {
-				panic("Multiple arrows seen in an assignment statement")
+			err, name, value := splitOnArrow(nvp)
+			if err != nil {
+				panic(err)
 			}
-			vars[parts[0]] = parts[1]
+			vars[name] = value
 		}
 	}
 
 	return vars
+}
+
+func splitOnSemi(s string) []string {
+	semicolon_sep := regexp.MustCompile("\\s*;\\s*")
+	return semicolon_sep.Split(s, -1)
+}
+
+func splitOnArrow(s string) (error, string, string) {
+	arrow_sep := regexp.MustCompile("\\s*->\\s*")
+	parts := arrow_sep.Split(s, -1)
+	if len(parts) != 2 {
+		return errors.New("Multiple arrows seen in an assignment statement"), "", ""
+	}
+	return nil, parts[0], parts[1]
 }
