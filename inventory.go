@@ -1,48 +1,56 @@
 package main
 
+import (
+//	"fmt"
+//	"github.com/davecgh/go-spew/spew"
+)
+
 // interface{} is a bit too loose, really a map to one or more
 // Group's and one Meta full of host variables
 type Inventory map[string]interface{}
 
-type GroupInfo struct {
-	Hosts []string          `json:"hosts"`
-	Vars  map[string]string `json:"vars,omitempty"`
-}
-
-func (i *Inventory) SetGroupInfo(group_name string, info GroupInfo) {
-	(*i)[group_name] = info
-}
-
-func (i *Inventory) SetMetaInfo(meta MetaInfo) {
-	(*i)["_meta"] = meta
-}
-
-type MetaInfo struct {
-	HostVars map[string]HostVars `json:"hostvars,omitempty"`
-}
-
-type HostVars map[string]string
-
-func (h *HostVars) setHostVar(name string, value string) {
-	(*h)[name] = value
-}
-
-func (m *MetaInfo) setHostVars(host_name string, hv HostVars) {
-	if m.HostVars == nil {
-		m.HostVars = make(map[string]HostVars)
+func (i *Inventory) SetHostVar(hostName string, varName string, varValue string) {
+	if (*i)["_meta"] == nil {
+		(*i)["_meta"] = make(map[string]interface{})
 	}
-	m.HostVars[host_name] = hv
-}
+	m := (*i)["_meta"].(map[string]interface{})
 
-// GroupInfo support
-
-func (g *GroupInfo) AddHosts(hostnames ...string) {
-	(*g).Hosts = append((*g).Hosts, hostnames...)
-}
-
-func (g *GroupInfo) SetVar(name string, value string) {
-	if (*g).Vars == nil {
-		(*g).Vars = make(map[string]string)
+	if m["hostvars"] == nil {
+		m["hostvars"] = make(map[string]map[string]string)
 	}
-	(*g).Vars[name] = value
+	h := m["hostvars"].(map[string]map[string]string)
+
+	if h[hostName] == nil {
+		h[hostName] = make(map[string]string)
+	}
+
+	h[hostName][varName] = varValue
+}
+
+// untested, needs additions to parser.go and data in example state file
+func (i *Inventory) SetGroupVar(groupName string, varName string, varValue string) {
+	if (*i)[groupName] == nil {
+		(*i)[groupName] = make(map[string]interface{})
+	}
+	g := (*i)[groupName].(map[string]interface{})
+
+	if g["vars"] == nil {
+		g["vars"] = make(map[string]string)
+	}
+	gv := g["vars"].(map[string]string)
+
+	gv[varName] = varValue
+}
+
+
+func (i *Inventory) AddHostToGroup(hostName string, groupName string) {
+	if (*i)[groupName] == nil {
+		(*i)[groupName] = make(map[string]interface{})
+	}
+	g := (*i)[groupName].(map[string]interface{})
+
+	if g["hosts"] == nil {
+		g["hosts"] = make([]string, 0)
+	}
+	g["hosts"] = append(g["hosts"].([]string), hostName)
 }
